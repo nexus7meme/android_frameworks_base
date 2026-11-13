@@ -27,6 +27,7 @@
 #include <utils/misc.h>
 #include <utils/Log.h>
 #include <map>
+#include <mutex>
 #include <stdio.h>
 
 namespace android {
@@ -40,7 +41,12 @@ using Type       = ::android::hardware::light::V2_0::Type;
 template<typename T>
 using Return     = ::android::hardware::Return<T>;
 
-static bool sLightSupported = true;
+// Keep the connected HAL across light updates. On legacy devices getService()
+// includes a discovery delay, which must not run while waking the display or
+// updating its brightness. Serialize access so a failed transaction invalidates
+// only the connection used for that transaction; the next update reconnects.
+static std::mutex sLightMutex;
+static sp<ILight> sLightHal;
 
 static bool validate(jint light, jint flash, jint brightness) {
     bool valid = true;
@@ -135,10 +141,6 @@ static void setLight_native(
         jint brightnessMode,
         jint brightnessLevel) {
 
-    if (!sLightSupported) {
-        return;
-    }
-
     if (!validate(light, flashMode, brightnessMode)) {
         return;
     }
@@ -158,13 +160,18 @@ static void setLight_native(
 
     {
         android::base::Timer t;
-        sp<ILight> hal = ILight::getService();
-        if (hal == nullptr) {
-            sLightSupported = false;
+        std::lock_guard<std::mutex> lock(sLightMutex);
+        if (sLightHal == nullptr) {
+            sLightHal = ILight::getService();
+        }
+        if (sLightHal == nullptr) {
             return;
         }
-        Return<Status> ret = hal->setLight(type, state);
+        Return<Status> ret = sLightHal->setLight(type, state);
         processReturn(ret, type, state);
+        if (!ret.isOk()) {
+            sLightHal.clear();
+        }
         if (t.duration() > 50ms) ALOGD("Excessive delay setting light");
     }
 }

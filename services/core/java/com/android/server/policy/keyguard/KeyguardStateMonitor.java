@@ -104,6 +104,15 @@ public class KeyguardStateMonitor extends IKeyguardStateCallback.Stub {
 
         mCallback.onShowingChanged();
 
+        // This callback is synchronous with SystemUI's main thread. Avoid HAL
+        // discovery entirely when USB restriction is disabled; legacy HIDL
+        // discovery can otherwise delay every lock-screen redraw by a second.
+        boolean shouldRestrictUsb = LineageSettings.Secure.getInt(mContentResolver,
+                LineageSettings.Secure.TRUST_RESTRICT_USB_KEYGUARD, 0) == 1;
+        if (!shouldRestrictUsb) {
+            return;
+        }
+
         if (mUsbRestrictor == null) {
             try {
                 mUsbRestrictor = IUsbRestrict.getService();
@@ -116,14 +125,10 @@ public class KeyguardStateMonitor extends IKeyguardStateCallback.Stub {
             }
         }
 
-        boolean shouldRestrictUsb = LineageSettings.Secure.getInt(mContentResolver,
-                LineageSettings.Secure.TRUST_RESTRICT_USB_KEYGUARD, 0) == 1;
-        if (shouldRestrictUsb) {
-            try {
-                mUsbRestrictor.setEnabled(showing);
-            } catch (RemoteException ignored) {
-                // This feature is not supported
-            }
+        try {
+            mUsbRestrictor.setEnabled(showing);
+        } catch (RemoteException ignored) {
+            // This feature is not supported
         }
     }
 

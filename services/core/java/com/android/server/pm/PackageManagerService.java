@@ -4425,7 +4425,8 @@ public class PackageManagerService extends IPackageManager.Stub
     private static native boolean isDebuggable();
 
     public static boolean isMicrogSigned(AndroidPackage p) {
-        if (!isDebuggable()) {
+        if (!isDebuggable() && !Resources.getSystem().getBoolean(
+                com.android.internal.R.bool.config_enableMicrogSignatureSpoofing)) {
             return false;
         }
 

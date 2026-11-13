@@ -359,7 +359,9 @@ Result<EGLSurface, EGLint> EglManager::createSurface(EGLNativeWindowType window,
     EGLSurface surface = eglCreateWindowSurface(
             mEglDisplay, wideColorGamut ? mEglConfigWideGamut : mEglConfig, window, attribs);
     if (surface == EGL_NO_SURFACE) {
-        return Error<EGLint>{eglGetError()};
+        EGLint error = eglGetError();
+        ALOGE("eglCreateWindowSurface failed for window %p: 0x%x", window, error);
+        return Error<EGLint>{error};
     }
 
     if (mSwapBehavior != SwapBehavior::Preserved) {

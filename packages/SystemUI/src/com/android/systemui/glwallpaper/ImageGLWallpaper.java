@@ -16,12 +16,15 @@
 
 package com.android.systemui.glwallpaper;
 
+import static android.opengl.GLES20.GL_CLAMP_TO_EDGE;
 import static android.opengl.GLES20.GL_FLOAT;
 import static android.opengl.GLES20.GL_LINEAR;
 import static android.opengl.GLES20.GL_TEXTURE0;
 import static android.opengl.GLES20.GL_TEXTURE_2D;
 import static android.opengl.GLES20.GL_TEXTURE_MAG_FILTER;
 import static android.opengl.GLES20.GL_TEXTURE_MIN_FILTER;
+import static android.opengl.GLES20.GL_TEXTURE_WRAP_S;
+import static android.opengl.GLES20.GL_TEXTURE_WRAP_T;
 import static android.opengl.GLES20.GL_TRIANGLES;
 import static android.opengl.GLES20.glActiveTexture;
 import static android.opengl.GLES20.glBindTexture;
@@ -149,6 +152,10 @@ class ImageGLWallpaper {
         try {
             // Bind a named texture to a target.
             glBindTexture(GL_TEXTURE_2D, tids[0]);
+            // GLES 2.0 NPOT textures require clamp wrapping. The default REPEAT
+            // mode makes wallpapers such as 1920x1920 incomplete on legacy GPUs.
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
             // Load the bitmap data and copy it over into the texture object
             // that is currently bound.
             GLUtils.texImage2D(GL_TEXTURE_2D, 0, bitmap, 0);

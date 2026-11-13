@@ -49,6 +49,7 @@ import android.app.Activity;
 import android.app.ActivityThread;
 import android.app.AppGlobals;
 import android.app.AppOpsManager;
+import android.app.usage.StorageStatsManager;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -2507,6 +2508,12 @@ public class StorageManager {
                 break;
             default:
                 throw new IllegalArgumentException("Invalid quota type: " + quotaType);
+        }
+        // Quota tagging is optional accounting. Legacy filesystems without
+        // quota support still provide ordinary files and permission checks.
+        final StorageStatsManager stats = mContext.getSystemService(StorageStatsManager.class);
+        if (!stats.isQuotaSupported(getUuidForPath(path))) {
+            return;
         }
         if (!setQuotaProjectId(filePath, projectId)) {
             throw new IOException("Failed to update quota type for " + filePath);

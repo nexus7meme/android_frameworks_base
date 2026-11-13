@@ -17,6 +17,7 @@
 
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
+#include <ui/GraphicBuffer.h>
 
 // TODO: Use public SurfaceTexture APIs once available and include public NDK header file instead.
 #include <surfacetexture/surface_texture_platform.h>
@@ -134,6 +135,18 @@ void DeferredLayerUpdater::apply() {
         }
         if (mUpdateTexImage) {
             mUpdateTexImage = false;
+            if (mReleaseTextureBeforeBuffer) {
+                // Submit previous uses before dropping their SkImage refs. The
+                // gralloc0 Tegra driver holds a reader until its texture sibling
+                // is deleted. Keeping one texture per BufferQueue slot would
+                // return reader-locked buffers to the producer and deadlock its
+                // next eglMakeCurrent. Release the siblings before dequeueBuffer
+                // releases the previous consumer buffer; retain normal GPU fence
+                // handling and never alter gralloc's lock state directly.
+                mRenderState.getRenderThread().getGrContext()->flush();
+                mLayer->setImage(nullptr);
+                mImageSlots.clear();
+            }
             float transformMatrix[16];
             android_dataspace dataspace;
             int slot;
@@ -146,6 +159,12 @@ void DeferredLayerUpdater::apply() {
                     createReleaseFence, fenceWait, &mRenderState);
 
             if (hardwareBuffer) {
+                const native_handle_t* handle =
+                        GraphicBuffer::fromAHardwareBuffer(hardwareBuffer)->handle;
+                mReleaseTextureBeforeBuffer =
+                        Properties::getRenderPipelineType() == RenderPipelineType::SkiaGL &&
+                        handle && handle->numFds == 1 && handle->numInts == 43 &&
+                        static_cast<uint32_t>(handle->data[1]) == 0xdaffcaffu;
                 sk_sp<SkImage> layerImage = mImageSlots[slot].createIfNeeded(
                         hardwareBuffer, dataspace, newContent,
                         mRenderState.getRenderThread().getGrContext());

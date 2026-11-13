@@ -220,6 +220,9 @@ class GnssConfiguration {
      */
     void reloadGpsProperties() {
         if (DEBUG) Log.d(TAG, "Reset GPS properties, previous size = " + mProperties.size());
+        // Device defaults (including chipset-specific assistance URLs) precede
+        // carrier and debug overrides. The legacy HAL also reads gps.conf.
+        loadPropertiesFromFile(mProperties, "/vendor/etc/gps.conf");
         loadPropertiesFromCarrierConfig();
 
         String lpp_prof = SystemProperties.get(LPP_PROFILE);
@@ -338,8 +341,12 @@ class GnssConfiguration {
     }
 
     private void loadPropertiesFromGpsDebugConfig(Properties properties) {
+        loadPropertiesFromFile(properties, DEBUG_PROPERTIES_FILE);
+    }
+
+    private static void loadPropertiesFromFile(Properties properties, String path) {
         try {
-            File file = new File(DEBUG_PROPERTIES_FILE);
+            File file = new File(path);
             FileInputStream stream = null;
             try {
                 stream = new FileInputStream(file);
@@ -348,7 +355,7 @@ class GnssConfiguration {
                 IoUtils.closeQuietly(stream);
             }
         } catch (IOException e) {
-            if (DEBUG) Log.d(TAG, "Could not open GPS configuration file " + DEBUG_PROPERTIES_FILE);
+            if (DEBUG) Log.d(TAG, "Could not open GPS configuration file " + path);
         }
     }
 

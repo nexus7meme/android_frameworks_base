@@ -129,6 +129,10 @@ private:
      */
     std::map<int, ImageSlot> mImageSlots;
 
+    // Tegra's gralloc0 EGLImage siblings retain a buffer read lock for the
+    // lifetime of the GL texture, rather than just the submitted GPU reads.
+    bool mReleaseTextureBeforeBuffer = false;
+
     RenderState& mRenderState;
 
     // Generic properties

@@ -67,6 +67,7 @@ import android.os.Environment;
 import android.os.FileObserver;
 import android.os.FileUtils;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.IInterface;
 import android.os.IRemoteCallback;
@@ -790,6 +791,7 @@ public class WallpaperManagerService extends IWallpaperManager.Stub
         }
     }
 
+    private final Handler mColorExtractionHandler;
     private final Context mContext;
     private final WindowManagerInternal mWindowManagerInternal;
     private final IPackageManager mIPackageManager;
@@ -1638,6 +1640,10 @@ public class WallpaperManagerService extends IWallpaperManager.Stub
     public WallpaperManagerService(Context context) {
         if (DEBUG) Slog.v(TAG, "WallpaperService startup");
         mContext = context;
+        final HandlerThread colorThread = new HandlerThread(
+                "WallpaperColors", Process.THREAD_PRIORITY_BACKGROUND);
+        colorThread.start();
+        mColorExtractionHandler = new Handler(colorThread.getLooper());
         mShuttingDown = false;
         mImageWallpaper = ComponentName.unflattenFromString(
                 context.getResources().getString(R.string.image_wallpaper_component));
@@ -1863,9 +1869,9 @@ public class WallpaperManagerService extends IWallpaperManager.Stub
                 switchWallpaper(systemWallpaper, reply);
             }
 
-            // Offload color extraction to another thread since switchUser will be called
-            // from the main thread.
-            FgThread.getHandler().post(() -> {
+            // Pixel clustering must not block the monitored foreground handler.
+            // It can take significant CPU time on older devices during startup.
+            mColorExtractionHandler.post(() -> {
                 notifyWallpaperColorsChanged(systemWallpaper, FLAG_SYSTEM);
                 notifyWallpaperColorsChanged(lockWallpaper, FLAG_LOCK);
                 notifyWallpaperColorsChanged(mFallbackWallpaper, FLAG_SYSTEM);

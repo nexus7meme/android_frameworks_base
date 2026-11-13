@@ -383,7 +383,7 @@ public class TaskPersister implements PersisterQueue.Listener {
         }
 
         if (!DEBUG) {
-            removeObsoleteFiles(recoveredTaskIds, userTasksDir.listFiles());
+            removeObsoleteFiles(recoveredTaskIds, userTasksDir);
         }
 
         // Fix up task affiliation from taskIds
@@ -429,11 +429,16 @@ public class TaskPersister implements PersisterQueue.Listener {
         writeTaskIdsFiles();
     }
 
-    private static void removeObsoleteFiles(ArraySet<Integer> persistentTaskIds, File[] files) {
+    private static void removeObsoleteFiles(ArraySet<Integer> persistentTaskIds, File directory) {
+        // Task/image directories are created on their first write. An absent
+        // directory has no obsolete files; a failed listing of an existing one
+        // still indicates an I/O or permission error.
+        if (!directory.exists()) return;
+        File[] files = directory.listFiles();
         if (DEBUG) Slog.d(TAG, "removeObsoleteFiles: persistentTaskIds=" + persistentTaskIds +
                 " files=" + files);
         if (files == null) {
-            Slog.e(TAG, "File error accessing recents directory (directory doesn't exist?).");
+            Slog.e(TAG, "File error accessing recents directory: " + directory);
             return;
         }
         for (int fileNdx = 0; fileNdx < files.length; ++fileNdx) {
@@ -487,8 +492,8 @@ public class TaskPersister implements PersisterQueue.Listener {
             candidateUserIds = mRecentTasks.usersWithRecentsLoadedLocked();
         }
         for (int userId : candidateUserIds) {
-            removeObsoleteFiles(persistentTaskIds, getUserImagesDir(userId).listFiles());
-            removeObsoleteFiles(persistentTaskIds, getUserTasksDir(userId).listFiles());
+            removeObsoleteFiles(persistentTaskIds, getUserImagesDir(userId));
+            removeObsoleteFiles(persistentTaskIds, getUserTasksDir(userId));
         }
     }
 

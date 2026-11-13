@@ -494,6 +494,10 @@ final class ColorFade {
                 SurfaceControl.screenshot(token, s);
                 st.updateTexImage();
                 st.getTransformMatrix(mTexMatrix);
+            } catch (RuntimeException e) {
+                // A failed screenshot import must not kill system_server during sleep.
+                Slog.e(TAG, "Unable to capture screenshot for color fade", e);
+                return false;
             } finally {
                 s.release();
                 st.release();

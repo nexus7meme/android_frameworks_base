@@ -275,6 +275,7 @@
   <java-symbol type="attr" name="autofillDatasetPickerMaxWidth"/>
   <java-symbol type="attr" name="autofillDatasetPickerMaxHeight"/>
   <java-symbol type="attr" name="autofillSaveCustomSubtitleMaxHeight"/>
+  <java-symbol type="bool" name="config_enableMicrogSignatureSpoofing" />
   <java-symbol type="bool" name="action_bar_embed_tabs" />
   <java-symbol type="bool" name="action_bar_expanded_action_views_exclusive" />
   <java-symbol type="bool" name="config_avoidGfxAccel" />
